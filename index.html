@@ -145,7 +145,7 @@
                 notes: [261.63, 261.63, 392, 392, 440, 440, 392, 349.23, 349.23, 329.63, 329.63, 293.66, 293.66, 261.63, 392, 392, 349.23, 349.23, 329.63, 329.63, 293.66]
             },
             {
-                name: "Sweet Child O' Mine",
+                name: "Sweet Child O' Mine (Slash Solo)",
                 notes: [
                     // 第一段 (根音 D)
                     D4, D5, A4, G4, G5, A4, Fs5, A4, D4, D5, A4, G4, G5, A4, Fs5, A4,
@@ -174,13 +174,13 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             
-            // 如果是第四首，使用方波增加點電吉他的感覺
+            // Sweet Child O' Mine 使用方波更像吉他
             osc.type = (isJunk) ? 'sawtooth' : (songIdx === 3 ? 'square' : 'sine');
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             
             gain.gain.setValueAtTime(0, audioCtx.currentTime);
             gain.gain.linearRampToValueAtTime(songIdx === 3 ? 0.6 : 0.6, audioCtx.currentTime + 0.02); 
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (songIdx === 3 ? 0.3 : 0.5));
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (songIdx === 3 ? 0.25 : 0.5));
             
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -209,6 +209,10 @@
             else if(coinCount >= 500) { world.classList.add('lvl-gold'); lvlText.innerText = "等級：黃金噴泉"; }
             else if(coinCount >= 100) { world.classList.add('lvl-stone'); lvlText.innerText = "等級：石材噴泉"; }
             else { lvlText.innerText = "等級：普通噴泉"; }
+
+            // 更新播放歌曲名稱
+            const songIdx = Math.floor(coinCount / 500) % playlist.length;
+            document.getElementById('song-name').innerText = playlist[songIdx].name;
         }
 
         function triggerHand() {
@@ -260,5 +264,6 @@
     </script>
 </body>
 </html>
+
 
 
