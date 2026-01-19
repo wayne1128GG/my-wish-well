@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Useless Musical Fountain</title>
+    <title>Useless Garden Fountain</title>
     <style>
         body {
             margin: 0;
@@ -18,6 +18,17 @@
             user-select: none;
         }
 
+        /* 太陽樣式 */
+        #sun {
+            position: absolute;
+            top: -100px; right: 50px;
+            font-size: 80px;
+            transition: top 5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 20px #f1c40f);
+            z-index: 0;
+        }
+        #sun.rise { top: 50px; }
+
         #ui-layer {
             position: absolute;
             top: 40px;
@@ -31,22 +42,19 @@
         .scores-container { display: flex; gap: 15px; justify-content: center; margin-top: 5px; }
         .score-box {
             font-size: 0.9rem; color: #7f8c8d; background: rgba(255,255,255,0.6);
-            padding: 8px 15px; border-radius: 15px; cursor: pointer; transition: 0.2s;
+            padding: 8px 15px; border-radius: 15px; cursor: pointer;
         }
 
-        /* 噴泉外觀升級顏色 */
+        /* 噴泉外觀 */
         .tier { background: #e0e0e0; border: 4px solid #bdc3c7; transition: all 1s ease; position: relative; display: flex; justify-content: center; }
-        /* 石頭級 */
         .lvl-stone .tier { background: #95a5a6; border-color: #7f8c8d; }
-        /* 黃金級 */
         .lvl-gold .tier { background: #f1c40f; border-color: #f39c12; box-shadow: 0 0 15px #f1c40f; }
-        /* 鑽石級 */
         .lvl-diamond .tier { background: #e0ffff; border-color: #00ced1; box-shadow: 0 0 30px #fff, inset 0 0 20px #00ced1; }
 
         #fountain-world {
             position: relative;
-            width: 400px;
-            height: 300px;
+            width: 500px;
+            height: 350px;
             cursor: pointer;
             display: flex;
             flex-direction: column;
@@ -63,7 +71,20 @@
 
         .water-blue { background: #4faef7; position: absolute; bottom: 5px; width: 90%; height: 60%; border-radius: 50%; opacity: 0.8; }
 
-        /* 手勢動畫：浮出後降下 */
+        /* 花朵容器 */
+        #garden-layer {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+        }
+        .flower { font-size: 30px; opacity: 0; transform: scale(0); transition: all 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .flower.bloom { opacity: 1; transform: scale(1); }
+
+        /* 手勢 */
         #terminator-hand {
             position: absolute;
             bottom: -100px;
@@ -84,7 +105,6 @@
             100% { transform: translate(var(--x), 50px) rotate(360deg); opacity: 0; }
         }
 
-        /* 圖鑑 */
         #catalog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
         #catalog-box { background: white; padding: 30px; border-radius: 20px; text-align: center; }
         .junk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
@@ -95,6 +115,8 @@
     </style>
 </head>
 <body>
+
+    <div id="sun">☀️</div>
 
     <div id="ui-layer">
         <div class="level-text" id="level-display">Level: Default</div>
@@ -107,6 +129,18 @@
 
     <div id="fountain-world" onclick="spawnItem(event)">
         <div id="terminator-hand">👍</div>
+        
+        <div id="garden-layer">
+            <div id="side-left">
+                <span class="flower" id="f1">🌷</span>
+                <span class="flower" id="f3">🌸</span>
+            </div>
+            <div id="side-right">
+                <span class="flower" id="f4">🌼</span>
+                <span class="flower" id="f2">🌻</span>
+            </div>
+        </div>
+
         <div class="tier top-bowl"></div>
         <div class="pillar"></div>
         <div class="tier mid-bowl"><div class="water-blue"></div></div>
@@ -118,7 +152,7 @@
 
     <div id="catalog-overlay" onclick="toggleCatalog()">
         <div id="catalog-box" onclick="event.stopPropagation()">
-            <h2 id="catalog-title">Trash Gallery</h2>
+            <h2>Trash Gallery</h2>
             <div class="junk-grid" id="junk-grid"></div>
             <button style="padding:10px 20px;" onclick="toggleCatalog()">Close</button>
         </div>
@@ -127,21 +161,11 @@
     <div class="tip" id="label-tip"></div>
 
     <script>
-        const i18n = {
-            'zh-TW': {
-                levels: ["普通噴泉", "石材噴泉", "黃金噴泉", "鑽石噴泉"],
-                tip: "集滿 8 種垃圾，噴泉將會發生神祕的事...",
-                achieve: "I'll be back..."
-            }
-        };
-
         const JUNKS = ['🐟', '👞', '🥫', '🦴', '💩', '🏚️', '🐀', '🍼'];
-        // 注意：每次進頁面 unlockedJunks 都清空
         let unlockedJunks = []; 
         let coinCount = parseInt(localStorage.getItem('fountainCoinSession')) || 0;
         let bestCoin = parseInt(localStorage.getItem('fountainBestCoin')) || 0;
         
-        // 瑪莉有隻小綿羊音符 (頻率)
         const marySong = [
             329.63, 293.66, 261.63, 293.66, 329.63, 329.63, 329.63,
             293.66, 293.66, 293.66, 329.63, 392.00, 392.00,
@@ -149,131 +173,118 @@
             293.66, 293.66, 329.63, 293.66, 261.63
         ];
         let noteIndex = 0;
+        let audioCtx = null;
 
-        // 延後初始化 AudioContext
-    let audioCtx = null;
-
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-    }
-
-    function playNote(isJunk) {
-        initAudio();
-        const freq = isJunk ? 80 : marySong[noteIndex]; // 垃圾用低沉音，硬幣用音樂
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        osc.type = isJunk ? 'sawtooth' : 'sine';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        
-        gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 0.02); 
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.5);
-        
-        if (!isJunk) {
-            noteIndex = (noteIndex + 1) % marySong.length;
-        }
-    }
-
-    function updateUI() {
-        document.getElementById('count').innerText = coinCount;
-        document.getElementById('best-coin').innerText = bestCoin;
-        document.getElementById('junk-total').innerText = unlockedJunks.length;
-        document.getElementById('label-tip').innerText = i18n['zh-TW'].tip;
-        
-        const world = document.getElementById('fountain-world');
-        const lvlText = document.getElementById('level-display');
-        world.className = "";
-        
-        // 根據投入總數切換外觀
-        if(coinCount >= 1000) { world.classList.add('lvl-diamond'); lvlText.innerText = i18n['zh-TW'].levels[3]; }
-        else if(coinCount >= 500) { world.classList.add('lvl-gold'); lvlText.innerText = i18n['zh-TW'].levels[2]; }
-        else if(coinCount >= 100) { world.classList.add('lvl-stone'); lvlText.innerText = i18n['zh-TW'].levels[1]; }
-        else { lvlText.innerText = i18n['zh-TW'].levels[0]; }
-    }
-
-    function triggerHand() {
-        const hand = document.getElementById('terminator-hand');
-        hand.classList.add('rise');
-        setTimeout(() => {
-            hand.classList.remove('rise');
-            unlockedJunks = []; // 3秒後清空垃圾圖鑑
-            updateUI();
-        }, 3000);
-    }
-
-    function spawnItem(e) {
-        // 先判斷是否為垃圾 (1% 機率)
-        const isJunk = Math.random() < 0.01;
-        
-        // 播放對應音效
-        playNote(isJunk);
-        
-        coinCount++;
-        localStorage.setItem('fountainCoinSession', coinCount);
-        if (coinCount > bestCoin) {
-            bestCoin = coinCount;
-            localStorage.setItem('fountainBestCoin', bestCoin);
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        const item = document.createElement('div');
-        item.className = isJunk ? 'item junk' : 'item coin';
-        
-        if (isJunk) {
-            const selectedJunk = JUNKS[Math.floor(Math.random() * JUNKS.length)];
-            item.innerText = selectedJunk;
-            if (!unlockedJunks.includes(selectedJunk)) {
-                unlockedJunks.push(selectedJunk);
-                if (unlockedJunks.length === 8) {
-                    setTimeout(triggerHand, 500); // 稍微延遲讓手勢更有驚喜感
-                }
+        function playNote(isJunk) {
+            initAudio();
+            const freq = isJunk ? 80 : marySong[noteIndex];
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = isJunk ? 'sawtooth' : 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 0.02); 
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+            if (!isJunk) noteIndex = (noteIndex + 1) % marySong.length;
+        }
+
+        function updateUI() {
+            document.getElementById('count').innerText = coinCount;
+            document.getElementById('best-coin').innerText = bestCoin;
+            document.getElementById('junk-total').innerText = unlockedJunks.length;
+            document.getElementById('label-tip').innerText = "高等級解鎖：1500枚起每500枚開一朵花，集滿開花太陽升起。";
+            
+            const world = document.getElementById('fountain-world');
+            const lvlText = document.getElementById('level-display');
+            world.className = "";
+            
+            if(coinCount >= 1000) {
+                world.classList.add('lvl-diamond');
+                lvlText.innerText = "鑽石噴泉";
+                // 花朵邏輯：1500(L), 2000(R), 2500(L), 3000(R)
+                if(coinCount >= 1500) document.getElementById('f1').classList.add('bloom');
+                if(coinCount >= 2000) document.getElementById('f2').classList.add('bloom');
+                if(coinCount >= 2500) document.getElementById('f3').classList.add('bloom');
+                if(coinCount >= 3000) document.getElementById('f4').classList.add('bloom');
+                // 太陽邏輯：3500枚
+                if(coinCount >= 3500) document.getElementById('sun').classList.add('rise');
             }
-        } else {
-            item.innerText = '$';
+            else if(coinCount >= 500) { world.classList.add('lvl-gold'); lvlText.innerText = "黃金噴泉"; }
+            else if(coinCount >= 100) { world.classList.add('lvl-stone'); lvlText.innerText = "石材噴泉"; }
+            else { lvlText.innerText = "普通噴泉"; }
         }
 
-        const jumpDistance = (Math.random() - 0.5) * 300; 
-        item.style.setProperty('--x', `${jumpDistance}px`);
-        item.style.bottom = "100px"; 
-        document.getElementById('fountain-world').appendChild(item);
-        
-        setTimeout(() => { item.remove(); }, 800);
-        updateUI();
-    }
-
-    function toggleCatalog() {
-        const overlay = document.getElementById('catalog-overlay');
-        if (overlay.style.display === 'flex') overlay.style.display = 'none';
-        else {
-            const grid = document.getElementById('junk-grid');
-            grid.innerHTML = '';
-            JUNKS.forEach(j => {
-                const slot = document.createElement('div');
-                slot.className = 'junk-slot' + (unlockedJunks.includes(j) ? '' : ' locked');
-                slot.innerText = unlockedJunks.includes(j) ? j : '?';
-                grid.appendChild(slot);
-            });
-            overlay.style.display = 'flex';
+        function triggerHand() {
+            const hand = document.getElementById('terminator-hand');
+            hand.classList.add('rise');
+            setTimeout(() => {
+                hand.classList.remove('rise');
+                unlockedJunks = [];
+                updateUI();
+            }, 3000);
         }
-    }
 
-    window.onload = updateUI;
-</script>
+        function spawnItem(e) {
+            const isJunk = Math.random() < 0.01;
+            playNote(isJunk);
+            
+            coinCount++;
+            localStorage.setItem('fountainCoinSession', coinCount);
+            if (coinCount > bestCoin) {
+                bestCoin = coinCount;
+                localStorage.setItem('fountainBestCoin', bestCoin);
+            }
+
+            const item = document.createElement('div');
+            item.className = isJunk ? 'item junk' : 'item coin';
+            
+            if (isJunk) {
+                const selectedJunk = JUNKS[Math.floor(Math.random() * JUNKS.length)];
+                item.innerText = selectedJunk;
+                if (!unlockedJunks.includes(selectedJunk)) {
+                    unlockedJunks.push(selectedJunk);
+                    if (unlockedJunks.length === 8) setTimeout(triggerHand, 500);
+                }
+            } else {
+                item.innerText = '$';
+            }
+
+            const jumpDistance = (Math.random() - 0.5) * 300; 
+            item.style.setProperty('--x', `${jumpDistance}px`);
+            item.style.bottom = "100px"; 
+            document.getElementById('fountain-world').appendChild(item);
+            setTimeout(() => { item.remove(); }, 800);
+            updateUI();
+        }
+
+        function toggleCatalog() {
+            const overlay = document.getElementById('catalog-overlay');
+            if (overlay.style.display === 'flex') overlay.style.display = 'none';
+            else {
+                const grid = document.getElementById('junk-grid');
+                grid.innerHTML = '';
+                JUNKS.forEach(j => {
+                    const slot = document.createElement('div');
+                    slot.className = 'junk-slot' + (unlockedJunks.includes(j) ? '' : ' locked');
+                    slot.innerText = unlockedJunks.includes(j) ? j : '?';
+                    grid.appendChild(slot);
+                });
+                overlay.style.display = 'flex';
+            }
+        }
+
+        window.onload = updateUI;
+    </script>
 </body>
 </html>
-
-
-
-
-
