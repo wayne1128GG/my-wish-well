@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Useless Wishing Fountain - Collector's Edition</title>
+    <title>Useless Wishing Fountain - Terminator Edition</title>
     <style>
         body {
             margin: 0;
@@ -25,29 +25,15 @@
             z-index: 100;
         }
 
-        .counter-label { font-size: 1.1rem; color: #555; }
         .counter-num { font-size: 3rem; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 0 white; margin: 2px 0; }
         
-        .scores-container {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 5px;
-        }
+        .scores-container { display: flex; gap: 15px; justify-content: center; margin-top: 5px; }
 
         .score-box {
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            background: rgba(255,255,255,0.6);
-            padding: 8px 15px;
-            border-radius: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            cursor: pointer;
-            transition: transform 0.2s;
+            font-size: 0.9rem; color: #7f8c8d; background: rgba(255,255,255,0.6);
+            padding: 8px 15px; border-radius: 15px; cursor: pointer; transition: 0.2s;
         }
         .score-box:hover { transform: scale(1.05); background: rgba(255,255,255,0.8); }
-
-        .chance { color: #e74c3c; font-weight: bold; margin-top: 15px; font-size: 0.9rem; }
 
         /* 噴泉主體 */
         #fountain-world {
@@ -67,30 +53,25 @@
         .pillar { width: 30px; height: 40px; background: #bdc3c7; margin: -5px 0; }
         .water-blue { background: #4faef7; position: absolute; bottom: 5px; width: 90%; height: 60%; border-radius: 50%; opacity: 0.8; box-shadow: 0 0 10px #fff; }
 
-        .spout {
+        /* 終結者比讚手勢動畫 */
+        #terminator-hand {
             position: absolute;
-            top: -20px;
-            width: 4px;
-            height: 20px;
-            background: rgba(255,255,255,0.8);
-            border-radius: 50%;
-            animation: waterFlow 1.5s infinite;
+            bottom: -80px; /* 初始隱藏在水底 */
+            font-size: 60px;
+            z-index: 5;
+            transition: bottom 2s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
         }
-        @keyframes waterFlow {
-            0%, 100% { transform: translateY(0); opacity: 1; }
-            50% { transform: translateY(-20px); opacity: 0.5; }
+        #terminator-hand.rise {
+            bottom: 40px; /* 升起的位置 */
         }
 
-        /* 掉落物 */
+        /* 掉落物動畫 */
         .item {
             position: absolute;
-            width: 35px;
-            height: 35px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 50;
-            pointer-events: none;
+            width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50; pointer-events: none;
             animation: tossItem 0.8s ease-out forwards;
         }
         .coin { background: #f1c40f; border-radius: 50%; border: 2px solid #f39c12; color: #d35400; font-weight: bold; }
@@ -102,46 +83,18 @@
             100% { transform: translate(var(--x), 50px) rotate(360deg); opacity: 0; }
         }
 
-        /* 圖鑑視窗 (Modal) */
+        /* 圖鑑視窗 */
         #catalog-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000;
         }
         #catalog-box {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 80%;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: white; padding: 30px; border-radius: 20px; text-align: center;
         }
-        .junk-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .junk-slot {
-            width: 60px;
-            height: 60px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            border: 2px solid #ddd;
-        }
+        .junk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+        .junk-slot { width: 60px; height: 60px; background: #f0f0f0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
         .locked { color: #ccc; filter: brightness(0.2) grayscale(1); }
-        .close-btn {
-            background: #e74c3c; color: white; border: none;
-            padding: 10px 25px; border-radius: 10px; cursor: pointer;
-        }
+        .close-btn { background: #e74c3c; color: white; border: none; padding: 10px 25px; border-radius: 10px; cursor: pointer; }
 
         .tip { position: fixed; bottom: 20px; color: #7f8c8d; font-size: 0.85rem; text-align: center; }
     </style>
@@ -149,19 +102,16 @@
 <body>
 
     <div id="ui-layer">
-        <div class="counter-label" id="label-coins">Current Drops</div>
         <div class="counter-num">💰 <span id="count">0</span></div>
-        
         <div class="scores-container">
-            <div class="score-box">🏆 <span id="label-best-coin">Best</span>: <span id="best-coin-count">0</span></div>
-            <div class="score-box" onclick="toggleCatalog()">🗑️ <span id="label-best-junk">Junk Collection</span>: <span id="best-junk-count">0</span></div>
+            <div class="score-box">🏆 <span id="label-best">Best</span>: <span id="best-coin">0</span></div>
+            <div class="score-box" onclick="toggleCatalog()">🗑️ <span id="label-junk">Junk</span>: <span id="junk-total">0</span></div>
         </div>
-        
-        <div class="chance"><span id="label-chance">Success Rate</span>: <span id="chance-val">0.000000</span>%</div>
     </div>
 
     <div id="fountain-world" onclick="spawnItem(event)">
-        <div class="tier top-bowl"><div class="spout"></div></div>
+        <div id="terminator-hand">👍</div>
+        <div class="tier top-bowl"></div>
         <div class="pillar"></div>
         <div class="tier mid-bowl"><div class="water-blue"></div></div>
         <div class="pillar"></div>
@@ -178,61 +128,41 @@
         </div>
     </div>
 
-    <div class="tip" id="label-tip">Click fountain to drop money.<br>Click "Junk Collection" to see your trash.</div>
+    <div class="tip" id="label-tip"></div>
 
     <script>
         const i18n = {
             'zh-TW': {
-                title: "超沒用許願噴泉",
-                current: "本次投入",
-                bestCoin: "最高紀錄",
-                bestJunk: "累積垃圾",
-                chance: "願望達成率",
-                gallery: "垃圾圖鑑",
-                close: "關閉",
-                tip: "點擊噴泉投幣。點擊「累積垃圾」查看你的收藏。"
+                best: "最高紀錄", junk: "累積垃圾", gallery: "垃圾圖鑑", close: "關閉",
+                tip: "集滿 8 種垃圾，將啟動「審判日」彩蛋。",
+                achieve: "成就達成：I'll be back (帶著垃圾)..."
             },
             'en': {
-                title: "Useless Wishing Fountain",
-                current: "Current Drops",
-                bestCoin: "Best Coins",
-                bestJunk: "Junk Collection",
-                chance: "Success Rate",
-                gallery: "Trash Gallery",
-                close: "Close",
-                tip: "Click fountain to drop money. Click 'Junk Collection' to see your trash."
+                best: "Best", junk: "Junk", gallery: "Trash Gallery", close: "Close",
+                tip: "Collect 8 types of junk to trigger the Easter Egg.",
+                achieve: "Achievement: I'll be back (with more trash)..."
             }
         };
 
         const userLang = navigator.language || navigator.userLanguage;
         const lang = userLang.includes('zh') ? 'zh-TW' : 'en';
 
-        // 垃圾定義
         const JUNKS = ['🐟', '👞', '🥫', '🦴', '💩', '🏚️', '🐀', '🍼'];
         let unlockedJunks = JSON.parse(localStorage.getItem('unlockedJunks')) || [];
+        let isAchieved = false;
 
-        // 初始化介面
-        document.title = i18n[lang].title;
-        document.getElementById('label-coins').innerText = i18n[lang].current;
-        document.getElementById('label-best-coin').innerText = i18n[lang].bestCoin;
-        document.getElementById('label-best-junk').innerText = i18n[lang].bestJunk;
-        document.getElementById('label-chance').innerText = i18n[lang].chance;
+        document.getElementById('label-best').innerText = i18n[lang].best;
+        document.getElementById('label-junk').innerText = i18n[lang].junk;
         document.getElementById('catalog-title').innerText = i18n[lang].gallery;
         document.getElementById('btn-close').innerText = i18n[lang].close;
-        document.getElementById('label-tip').innerHTML = i18n[lang].tip;
+        document.getElementById('label-tip').innerText = i18n[lang].tip;
 
         let coinCount = 0;
         let junkTotal = parseInt(localStorage.getItem('fountainJunkCount')) || 0;
         let bestCoin = parseInt(localStorage.getItem('fountainBestCoin')) || 0;
         
-        const countEl = document.getElementById('count');
-        const bestCoinEl = document.getElementById('best-coin-count');
-        const bestJunkEl = document.getElementById('best-junk-count');
-        const chanceEl = document.getElementById('chance-val');
-        const world = document.getElementById('fountain-world');
-        
-        bestCoinEl.innerText = bestCoin;
-        bestJunkEl.innerText = junkTotal;
+        document.getElementById('best-coin').innerText = bestCoin;
+        document.getElementById('junk-total').innerText = junkTotal;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -249,87 +179,22 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
+        function checkAchievement() {
+            if (unlockedJunks.length === JUNKS.length && !isAchieved) {
+                isAchieved = true;
+                const hand = document.getElementById('terminator-hand');
+                hand.classList.add('rise');
+                document.getElementById('label-tip').innerText = i18n[lang].achieve;
+                
+                // 播放一個英雄式的老電影音效
+                setTimeout(() => {
+                    playSound(200, 'square', 1.5, 0.1);
+                    setTimeout(() => playSound(150, 'square', 1.0, 0.1), 300);
+                }, 500);
+            }
+        }
+
         function toggleCatalog() {
             const overlay = document.getElementById('catalog-overlay');
             if (overlay.style.display === 'flex') {
-                overlay.style.display = 'none';
-            } else {
-                renderCatalog();
-                overlay.style.display = 'flex';
-            }
-        }
-
-        function renderCatalog() {
-            const grid = document.getElementById('junk-grid');
-            grid.innerHTML = '';
-            JUNKS.forEach(j => {
-                const slot = document.createElement('div');
-                slot.className = 'junk-slot';
-                if (unlockedJunks.includes(j)) {
-                    slot.innerText = j;
-                } else {
-                    slot.innerText = '?';
-                    slot.classList.add('locked');
-                }
-                grid.appendChild(slot);
-            });
-        }
-
-        function spawnItem(e) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            coinCount++;
-            countEl.innerText = coinCount;
-            
-            if (coinCount > bestCoin) {
-                bestCoin = coinCount;
-                bestCoinEl.innerText = bestCoin;
-                localStorage.setItem('fountainBestCoin', bestCoin);
-            }
-
-            let newChance = (50 / (coinCount + 50)).toFixed(6);
-            chanceEl.innerText = newChance;
-
-            const isJunk = Math.random() < 0.01;
-            const item = document.createElement('div');
-            item.className = isJunk ? 'item junk' : 'item coin';
-            
-            if (isJunk) {
-                junkTotal++;
-                bestJunkEl.innerText = junkTotal;
-                localStorage.setItem('fountainJunkCount', junkTotal);
-
-                const selectedJunk = JUNKS[Math.floor(Math.random() * JUNKS.length)];
-                item.innerText = selectedJunk;
-                
-                // 解鎖圖鑑
-                if (!unlockedJunks.includes(selectedJunk)) {
-                    unlockedJunks.push(selectedJunk);
-                    localStorage.setItem('unlockedJunks', JSON.stringify(unlockedJunks));
-                }
-
-                playSound(80, 'sawtooth', 0.5, 0.1); 
-            } else {
-                item.innerText = '$';
-                playSound(900 + Math.random() * 300, 'sine', 0.3, 0.1);
-            }
-
-            const jumpDistance = (Math.random() - 0.5) * 300; 
-            item.style.setProperty('--x', `${jumpDistance}px`);
-            item.style.bottom = "100px"; 
-            world.appendChild(item);
-
-            setTimeout(() => {
-                const splash = document.createElement('div');
-                splash.className = 'splash';
-                splash.style.left = `calc(50% + ${jumpDistance}px)`;
-                world.appendChild(splash);
-                playSound(150, 'triangle', 0.2, 0.2); 
-                setTimeout(() => splash.remove(), 400);
-            }, 600);
-
-            setTimeout(() => { item.remove(); }, 800);
-        }
-    </script>
-</body>
-</html>
+                overlay.style.display =
