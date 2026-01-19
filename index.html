@@ -162,26 +162,28 @@
         }
     }
 
-    function playNote() {
+    function playNote(isJunk) {
         initAudio();
-        const freq = marySong[noteIndex];
+        const freq = isJunk ? 80 : marySong[noteIndex]; // 垃圾用低沉音，硬幣用音樂
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         
-        osc.type = 'sine';
+        osc.type = isJunk ? 'sawtooth' : 'sine';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         
         gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05); // 漸強避免爆音
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.02); 
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
         
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.4);
+        osc.stop(audioCtx.currentTime + 0.5);
         
-        noteIndex = (noteIndex + 1) % marySong.length;
+        if (!isJunk) {
+            noteIndex = (noteIndex + 1) % marySong.length;
+        }
     }
 
     function updateUI() {
@@ -193,6 +195,8 @@
         const world = document.getElementById('fountain-world');
         const lvlText = document.getElementById('level-display');
         world.className = "";
+        
+        // 根據投入總數切換外觀
         if(coinCount >= 1000) { world.classList.add('lvl-diamond'); lvlText.innerText = i18n['zh-TW'].levels[3]; }
         else if(coinCount >= 500) { world.classList.add('lvl-gold'); lvlText.innerText = i18n['zh-TW'].levels[2]; }
         else if(coinCount >= 100) { world.classList.add('lvl-stone'); lvlText.innerText = i18n['zh-TW'].levels[1]; }
@@ -204,14 +208,17 @@
         hand.classList.add('rise');
         setTimeout(() => {
             hand.classList.remove('rise');
-            unlockedJunks = [];
+            unlockedJunks = []; // 3秒後清空垃圾圖鑑
             updateUI();
         }, 3000);
     }
 
     function spawnItem(e) {
-        // 核心：每次點擊都嘗試啟動音訊
-        playNote();
+        // 先判斷是否為垃圾 (1% 機率)
+        const isJunk = Math.random() < 0.01;
+        
+        // 播放對應音效
+        playNote(isJunk);
         
         coinCount++;
         localStorage.setItem('fountainCoinSession', coinCount);
@@ -220,7 +227,6 @@
             localStorage.setItem('fountainBestCoin', bestCoin);
         }
 
-        const isJunk = Math.random() < 0.01; // 1% 機率出垃圾
         const item = document.createElement('div');
         item.className = isJunk ? 'item junk' : 'item coin';
         
@@ -229,7 +235,9 @@
             item.innerText = selectedJunk;
             if (!unlockedJunks.includes(selectedJunk)) {
                 unlockedJunks.push(selectedJunk);
-                if (unlockedJunks.length === 8) triggerHand();
+                if (unlockedJunks.length === 8) {
+                    setTimeout(triggerHand, 500); // 稍微延遲讓手勢更有驚喜感
+                }
             }
         } else {
             item.innerText = '$';
@@ -239,6 +247,7 @@
         item.style.setProperty('--x', `${jumpDistance}px`);
         item.style.bottom = "100px"; 
         document.getElementById('fountain-world').appendChild(item);
+        
         setTimeout(() => { item.remove(); }, 800);
         updateUI();
     }
@@ -263,5 +272,6 @@
 </script>
 </body>
 </html>
+
 
 
