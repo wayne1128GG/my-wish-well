@@ -197,4 +197,70 @@
         function toggleCatalog() {
             const overlay = document.getElementById('catalog-overlay');
             if (overlay.style.display === 'flex') {
-                overlay.style.display =
+                overlay.style.display = 'none';
+            } else {
+                renderCatalog();
+                overlay.style.display = 'flex';
+            }
+        }
+
+        function renderCatalog() {
+            const grid = document.getElementById('junk-grid');
+            grid.innerHTML = '';
+            JUNKS.forEach(j => {
+                const slot = document.createElement('div');
+                slot.className = 'junk-slot';
+                if (unlockedJunks.includes(j)) slot.innerText = j;
+                else { slot.innerText = '?'; slot.classList.add('locked'); }
+                grid.appendChild(slot);
+            });
+        }
+
+        function spawnItem(e) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            coinCount++;
+            document.getElementById('count').innerText = coinCount;
+            
+            if (coinCount > bestCoin) {
+                bestCoin = coinCount;
+                document.getElementById('best-coin').innerText = bestCoin;
+                localStorage.setItem('fountainBestCoin', bestCoin);
+            }
+
+            const isJunk = Math.random() < 0.01;
+            const item = document.createElement('div');
+            item.className = isJunk ? 'item junk' : 'item coin';
+            
+            if (isJunk) {
+                junkTotal++;
+                document.getElementById('junk-total').innerText = junkTotal;
+                localStorage.setItem('fountainJunkCount', junkTotal);
+
+                const selectedJunk = JUNKS[Math.floor(Math.random() * JUNKS.length)];
+                item.innerText = selectedJunk;
+                
+                if (!unlockedJunks.includes(selectedJunk)) {
+                    unlockedJunks.push(selectedJunk);
+                    localStorage.setItem('unlockedJunks', JSON.stringify(unlockedJunks));
+                    checkAchievement(); // 檢查是否集滿
+                }
+                playSound(80, 'sawtooth', 0.5, 0.1); 
+            } else {
+                item.innerText = '$';
+                playSound(900 + Math.random() * 300, 'sine', 0.3, 0.1);
+            }
+
+            const jumpDistance = (Math.random() - 0.5) * 300; 
+            item.style.setProperty('--x', `${jumpDistance}px`);
+            item.style.bottom = "100px"; 
+            document.getElementById('fountain-world').appendChild(item);
+
+            setTimeout(() => { item.remove(); }, 800);
+        }
+
+        // 頁面載入時檢查一次（如果早就集滿了）
+        window.onload = checkAchievement;
+    </script>
+</body>
+</html>
