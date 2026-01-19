@@ -53,17 +53,21 @@
         .pillar { width: 30px; height: 40px; background: #bdc3c7; margin: -5px 0; }
         .water-blue { background: #4faef7; position: absolute; bottom: 5px; width: 90%; height: 60%; border-radius: 50%; opacity: 0.8; box-shadow: 0 0 10px #fff; }
 
-        /* 終結者比讚手勢動畫 */
+        /* 終結者比讚手勢 - 初始狀態完全隱藏 */
         #terminator-hand {
             position: absolute;
-            bottom: -80px; /* 初始隱藏在水底 */
+            bottom: -100px; /* 藏得更深 */
             font-size: 60px;
             z-index: 5;
-            transition: bottom 2s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; /* 完全透明 */
+            transition: bottom 2.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 1s ease;
             filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
         }
+
+        /* 觸發後的狀態 */
         #terminator-hand.rise {
-            bottom: 40px; /* 升起的位置 */
+            bottom: 40px;
+            opacity: 1; /* 變回可見 */
         }
 
         /* 掉落物動畫 */
@@ -88,9 +92,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000;
         }
-        #catalog-box {
-            background: white; padding: 30px; border-radius: 20px; text-align: center;
-        }
+        #catalog-box { background: white; padding: 30px; border-radius: 20px; text-align: center; }
         .junk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
         .junk-slot { width: 60px; height: 60px; background: #f0f0f0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
         .locked { color: #ccc; filter: brightness(0.2) grayscale(1); }
@@ -111,6 +113,7 @@
 
     <div id="fountain-world" onclick="spawnItem(event)">
         <div id="terminator-hand">👍</div>
+        
         <div class="tier top-bowl"></div>
         <div class="pillar"></div>
         <div class="tier mid-bowl"><div class="water-blue"></div></div>
@@ -134,12 +137,12 @@
         const i18n = {
             'zh-TW': {
                 best: "最高紀錄", junk: "累積垃圾", gallery: "垃圾圖鑑", close: "關閉",
-                tip: "集滿 8 種垃圾，將啟動「審判日」彩蛋。",
+                tip: "集滿 8 種垃圾，噴泉將會發生神祕的事...",
                 achieve: "成就達成：I'll be back (帶著垃圾)..."
             },
             'en': {
                 best: "Best", junk: "Junk", gallery: "Trash Gallery", close: "Close",
-                tip: "Collect 8 types of junk to trigger the Easter Egg.",
+                tip: "Collect all 8 junks to trigger the mystery...",
                 achieve: "Achievement: I'll be back (with more trash)..."
             }
         };
@@ -151,6 +154,7 @@
         let unlockedJunks = JSON.parse(localStorage.getItem('unlockedJunks')) || [];
         let isAchieved = false;
 
+        // 初始化
         document.getElementById('label-best').innerText = i18n[lang].best;
         document.getElementById('label-junk').innerText = i18n[lang].junk;
         document.getElementById('catalog-title').innerText = i18n[lang].gallery;
@@ -179,17 +183,20 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
+        // 核心檢查邏輯
         function checkAchievement() {
-            if (unlockedJunks.length === JUNKS.length && !isAchieved) {
+            if (unlockedJunks.length === JUNKS.length) {
                 isAchieved = true;
                 const hand = document.getElementById('terminator-hand');
-                hand.classList.add('rise');
-                document.getElementById('label-tip').innerText = i18n[lang].achieve;
                 
-                // 播放一個英雄式的老電影音效
+                // 動畫啟動
                 setTimeout(() => {
-                    playSound(200, 'square', 1.5, 0.1);
-                    setTimeout(() => playSound(150, 'square', 1.0, 0.1), 300);
+                    hand.classList.add('rise');
+                    document.getElementById('label-tip').innerText = i18n[lang].achieve;
+                    
+                    // 播放史詩震撼音效
+                    playSound(120, 'square', 2.0, 0.1);
+                    setTimeout(() => playSound(100, 'square', 1.5, 0.1), 400);
                 }, 500);
             }
         }
@@ -243,7 +250,11 @@
                 if (!unlockedJunks.includes(selectedJunk)) {
                     unlockedJunks.push(selectedJunk);
                     localStorage.setItem('unlockedJunks', JSON.stringify(unlockedJunks));
-                    checkAchievement(); // 檢查是否集滿
+                    
+                    // 每次得到新垃圾都檢查是否全滿
+                    if (unlockedJunks.length === JUNKS.length) {
+                        checkAchievement();
+                    }
                 }
                 playSound(80, 'sawtooth', 0.5, 0.1); 
             } else {
@@ -259,9 +270,12 @@
             setTimeout(() => { item.remove(); }, 800);
         }
 
-        // 頁面載入時檢查一次（如果早就集滿了）
-        window.onload = checkAchievement;
+        // 網頁開啟時自動檢查（若之前已集滿，手會直接升起）
+        window.onload = () => {
+            if (unlockedJunks.length === JUNKS.length) {
+                checkAchievement();
+            }
+        };
     </script>
 </body>
 </html>
-
