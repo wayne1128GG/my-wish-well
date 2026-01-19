@@ -25,8 +25,9 @@
             z-index: 100;
         }
 
-        .counter-label { font-size: 1.2rem; color: #555; margin-bottom: 5px; }
-        .counter-num { font-size: 3rem; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 0 white; }
+        .counter-label { font-size: 1.2rem; color: #555; }
+        .counter-num { font-size: 3rem; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 0 white; margin: 5px 0; }
+        .high-score { font-size: 1rem; color: #7f8c8d; background: rgba(255,255,255,0.5); padding: 2px 10px; border-radius: 20px; }
         .chance { color: #e74c3c; font-weight: bold; margin-top: 10px; }
 
         #fountain-world {
@@ -40,6 +41,7 @@
             justify-content: flex-end;
         }
 
+        /* 噴泉結構 */
         .tier { background: #e0e0e0; border: 4px solid #bdc3c7; position: relative; display: flex; justify-content: center; }
         .top-bowl { width: 60px; height: 20px; border-radius: 50% 50% 0 0; z-index: 3; }
         .mid-bowl { width: 140px; height: 35px; border-radius: 50% 50% 10px 10px; margin-top: -5px; z-index: 2; }
@@ -63,24 +65,24 @@
             100% { transform: translateY(0); opacity: 1; }
         }
 
-        .coin {
+        /* 噴出物動畫 (硬幣或垃圾) */
+        .item {
             position: absolute;
             width: 30px;
             height: 30px;
-            background: #f1c40f;
-            border-radius: 50%;
-            border: 2px solid #f39c12;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            color: #d35400;
             z-index: 50;
             pointer-events: none;
-            animation: tossCoin 0.8s ease-out forwards;
+            animation: tossItem 0.8s ease-out forwards;
         }
+        
+        .coin { background: #f1c40f; border-radius: 50%; border: 2px solid #f39c12; color: #d35400; }
+        .junk { font-size: 24px; }
 
-        @keyframes tossCoin {
+        @keyframes tossItem {
             0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
             40% { transform: translate(var(--x), -150px) rotate(180deg); opacity: 1; }
             100% { transform: translate(var(--x), 50px) rotate(360deg); opacity: 0; }
@@ -110,10 +112,11 @@
     <div id="ui-layer">
         <div class="counter-label" id="label-coins">Coins Dropped</div>
         <div class="counter-num">💰 <span id="count">0</span></div>
+        <div class="high-score"><span id="label-best">Best</span>: <span id="best-count">0</span></div>
         <div class="chance"><span id="label-chance">Success Rate</span>: <span id="chance-val">0.000000</span>%</div>
     </div>
 
-    <div id="fountain-world" onclick="spawnCoin(event)">
+    <div id="fountain-world" onclick="spawnItem(event)">
         <div class="tier top-bowl"><div class="spout"></div></div>
         <div class="pillar"></div>
         <div class="tier mid-bowl"><div class="water-blue"></div></div>
@@ -123,97 +126,105 @@
         </div>
     </div>
 
-    <div class="tip" id="label-tip">Click to throw money. It's the most beautiful noise in the world.</div>
+    <div class="tip" id="label-tip">Click to throw money. 1% chance to get something else.</div>
 
     <script>
-        // 語系設定檔
         const i18n = {
             'zh-TW': {
                 title: "超沒用許願噴泉",
-                coins: "已投入硬幣",
+                coins: "本次投入",
+                best: "歷史最高",
                 chance: "願望達成率",
-                tip: "點擊噴泉：丟錢的聲音是世界上最悅耳的噪音。"
+                tip: "點擊噴泉：丟錢的聲音很悅耳。1% 機率會噴出奇怪的東西。"
             },
             'en': {
                 title: "Useless Wishing Fountain",
-                coins: "Coins Dropped",
+                coins: "Current Drop",
+                best: "Personal Best",
                 chance: "Success Rate",
-                tip: "Click to throw money. It's the most beautiful noise in the world."
+                tip: "Click to throw money. 1% chance to get something else."
             }
         };
 
-        // 偵測語言
         const userLang = navigator.language || navigator.userLanguage;
         const lang = userLang.includes('zh') ? 'zh-TW' : 'en';
 
-        // 初始化文字
         document.title = i18n[lang].title;
         document.getElementById('label-coins').innerText = i18n[lang].coins;
+        document.getElementById('label-best').innerText = i18n[lang].best;
         document.getElementById('label-chance').innerText = i18n[lang].chance;
         document.getElementById('label-tip').innerText = i18n[lang].tip;
 
         let count = 0;
+        let bestCount = localStorage.getItem('fountainBest') || 0;
+        
         const countEl = document.getElementById('count');
+        const bestEl = document.getElementById('best-count');
         const chanceEl = document.getElementById('chance-val');
         const world = document.getElementById('fountain-world');
+        
+        bestEl.innerText = bestCount;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playCoinSound() {
+        function playSound(freq, type, duration, volume) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(900 + Math.random() * 300, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
+            osc.stop(audioCtx.currentTime + duration);
         }
 
-        function playSplashSound() {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
-        }
-
-        function spawnCoin(e) {
+        function spawnItem(e) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
             count++;
             countEl.innerText = count;
+            
+            // 更新最高紀錄
+            if (count > bestCount) {
+                bestCount = count;
+                bestEl.innerText = bestCount;
+                localStorage.setItem('fountainBest', bestCount);
+            }
+
             let newChance = (50 / (count + 50)).toFixed(6);
             chanceEl.innerText = newChance;
 
-            playCoinSound();
-            setTimeout(playSplashSound, 500);
+            // 隨機事件判斷 (1% 機率)
+            const isJunk = Math.random() < 0.01;
+            const item = document.createElement('div');
+            item.className = isJunk ? 'item junk' : 'item coin';
+            
+            if (isJunk) {
+                const junks = ['🐟', '👞', '🥫', '🦴', '💩'];
+                item.innerText = junks[Math.floor(Math.random() * junks.length)];
+                playSound(100, 'square', 0.4, 0.1); // 垃圾噴出的怪聲
+            } else {
+                item.innerText = '$';
+                playSound(900 + Math.random() * 300, 'sine', 0.3, 0.1);
+            }
 
-            const coin = document.createElement('div');
-            coin.className = 'coin';
-            coin.innerText = '$';
             const jumpDistance = (Math.random() - 0.5) * 300; 
-            coin.style.setProperty('--x', `${jumpDistance}px`);
-            coin.style.bottom = "100px"; 
-            world.appendChild(coin);
+            item.style.setProperty('--x', `${jumpDistance}px`);
+            item.style.bottom = "100px"; 
+            world.appendChild(item);
 
             setTimeout(() => {
                 const splash = document.createElement('div');
                 splash.className = 'splash';
                 splash.style.left = `calc(50% + ${jumpDistance}px)`;
                 world.appendChild(splash);
+                playSound(150, 'triangle', 0.2, 0.2); // 落水聲
                 setTimeout(() => splash.remove(), 400);
             }, 600);
 
-            setTimeout(() => { coin.remove(); }, 800);
+            setTimeout(() => { item.remove(); }, 800);
         }
     </script>
 </body>
