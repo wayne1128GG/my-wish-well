@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Useless Wishing Fountain</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to bottom, #87CEEB, #ffffff);
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 40px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .counter-label { font-size: 1.2rem; color: #555; margin-bottom: 5px; }
+        .counter-num { font-size: 3rem; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 0 white; }
+        .chance { color: #e74c3c; font-weight: bold; margin-top: 10px; }
+
+        #fountain-world {
+            position: relative;
+            width: 400px;
+            height: 300px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .tier { background: #e0e0e0; border: 4px solid #bdc3c7; position: relative; display: flex; justify-content: center; }
+        .top-bowl { width: 60px; height: 20px; border-radius: 50% 50% 0 0; z-index: 3; }
+        .mid-bowl { width: 140px; height: 35px; border-radius: 50% 50% 10px 10px; margin-top: -5px; z-index: 2; }
+        .bottom-pool { width: 300px; height: 60px; border-radius: 50% 50% 20px 20px; margin-top: -5px; z-index: 1; overflow: hidden; }
+        .pillar { width: 30px; height: 40px; background: #bdc3c7; margin: -5px 0; }
+        .water-blue { background: #4faef7; position: absolute; bottom: 5px; width: 90%; height: 60%; border-radius: 50%; opacity: 0.8; box-shadow: 0 0 10px #fff; }
+
+        .spout {
+            position: absolute;
+            top: -20px;
+            width: 4px;
+            height: 20px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            animation: waterFlow 1.5s infinite;
+        }
+
+        @keyframes waterFlow {
+            0% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(-20px); opacity: 0.5; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .coin {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #f1c40f;
+            border-radius: 50%;
+            border: 2px solid #f39c12;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #d35400;
+            z-index: 50;
+            pointer-events: none;
+            animation: tossCoin 0.8s ease-out forwards;
+        }
+
+        @keyframes tossCoin {
+            0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+            40% { transform: translate(var(--x), -150px) rotate(180deg); opacity: 1; }
+            100% { transform: translate(var(--x), 50px) rotate(360deg); opacity: 0; }
+        }
+
+        .splash {
+            position: absolute;
+            bottom: 50px;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: splashEffect 0.4s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes splashEffect {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(4); opacity: 0; }
+        }
+
+        .tip { position: fixed; bottom: 20px; color: #7f8c8d; font-size: 0.9rem; text-align: center; padding: 0 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="counter-label" id="label-coins">Coins Dropped</div>
+        <div class="counter-num">💰 <span id="count">0</span></div>
+        <div class="chance"><span id="label-chance">Success Rate</span>: <span id="chance-val">0.000000</span>%</div>
+    </div>
+
+    <div id="fountain-world" onclick="spawnCoin(event)">
+        <div class="tier top-bowl"><div class="spout"></div></div>
+        <div class="pillar"></div>
+        <div class="tier mid-bowl"><div class="water-blue"></div></div>
+        <div class="pillar"></div>
+        <div class="tier bottom-pool">
+            <div class="water-blue" style="width: 95%; height: 70%;"></div>
+        </div>
+    </div>
+
+    <div class="tip" id="label-tip">Click to throw money. It's the most beautiful noise in the world.</div>
+
+    <script>
+        // 語系設定檔
+        const i18n = {
+            'zh-TW': {
+                title: "超沒用許願噴泉",
+                coins: "已投入硬幣",
+                chance: "願望達成率",
+                tip: "點擊噴泉：丟錢的聲音是世界上最悅耳的噪音。"
+            },
+            'en': {
+                title: "Useless Wishing Fountain",
+                coins: "Coins Dropped",
+                chance: "Success Rate",
+                tip: "Click to throw money. It's the most beautiful noise in the world."
+            }
+        };
+
+        // 偵測語言
+        const userLang = navigator.language || navigator.userLanguage;
+        const lang = userLang.includes('zh') ? 'zh-TW' : 'en';
+
+        // 初始化文字
+        document.title = i18n[lang].title;
+        document.getElementById('label-coins').innerText = i18n[lang].coins;
+        document.getElementById('label-chance').innerText = i18n[lang].chance;
+        document.getElementById('label-tip').innerText = i18n[lang].tip;
+
+        let count = 0;
+        const countEl = document.getElementById('count');
+        const chanceEl = document.getElementById('chance-val');
+        const world = document.getElementById('fountain-world');
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playCoinSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(900 + Math.random() * 300, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playSplashSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        function spawnCoin(e) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            count++;
+            countEl.innerText = count;
+            let newChance = (50 / (count + 50)).toFixed(6);
+            chanceEl.innerText = newChance;
+
+            playCoinSound();
+            setTimeout(playSplashSound, 500);
+
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            coin.innerText = '$';
+            const jumpDistance = (Math.random() - 0.5) * 300; 
+            coin.style.setProperty('--x', `${jumpDistance}px`);
+            coin.style.bottom = "100px"; 
+            world.appendChild(coin);
+
+            setTimeout(() => {
+                const splash = document.createElement('div');
+                splash.className = 'splash';
+                splash.style.left = `calc(50% + ${jumpDistance}px)`;
+                world.appendChild(splash);
+                setTimeout(() => splash.remove(), 400);
+            }, 600);
+
+            setTimeout(() => { coin.remove(); }, 800);
+        }
+    </script>
+</body>
+</html>
