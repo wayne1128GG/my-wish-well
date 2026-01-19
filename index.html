@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Useless Wishing Fountain</title>
+    <title>Useless Wishing Fountain - Collector's Edition</title>
     <style>
         body {
             margin: 0;
@@ -39,13 +39,17 @@
             font-size: 0.9rem;
             color: #7f8c8d;
             background: rgba(255,255,255,0.6);
-            padding: 4px 12px;
+            padding: 8px 15px;
             border-radius: 15px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.2s;
         }
+        .score-box:hover { transform: scale(1.05); background: rgba(255,255,255,0.8); }
 
         .chance { color: #e74c3c; font-weight: bold; margin-top: 15px; font-size: 0.9rem; }
 
+        /* 噴泉主體 */
         #fountain-world {
             position: relative;
             width: 400px;
@@ -56,8 +60,6 @@
             align-items: center;
             justify-content: flex-end;
         }
-
-        /* 噴泉結構 */
         .tier { background: #e0e0e0; border: 4px solid #bdc3c7; position: relative; display: flex; justify-content: center; }
         .top-bowl { width: 60px; height: 20px; border-radius: 50% 50% 0 0; z-index: 3; }
         .mid-bowl { width: 140px; height: 35px; border-radius: 50% 50% 10px 10px; margin-top: -5px; z-index: 2; }
@@ -74,13 +76,12 @@
             border-radius: 50%;
             animation: waterFlow 1.5s infinite;
         }
-
         @keyframes waterFlow {
-            0% { transform: translateY(0); opacity: 1; }
+            0%, 100% { transform: translateY(0); opacity: 1; }
             50% { transform: translateY(-20px); opacity: 0.5; }
-            100% { transform: translateY(0); opacity: 1; }
         }
 
+        /* 掉落物 */
         .item {
             position: absolute;
             width: 35px;
@@ -88,14 +89,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
             z-index: 50;
             pointer-events: none;
             animation: tossItem 0.8s ease-out forwards;
         }
-        
-        .coin { background: #f1c40f; border-radius: 50%; border: 2px solid #f39c12; color: #d35400; font-size: 18px; }
-        .junk { font-size: 28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+        .coin { background: #f1c40f; border-radius: 50%; border: 2px solid #f39c12; color: #d35400; font-weight: bold; }
+        .junk { font-size: 28px; }
 
         @keyframes tossItem {
             0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
@@ -103,23 +102,48 @@
             100% { transform: translate(var(--x), 50px) rotate(360deg); opacity: 0; }
         }
 
-        .splash {
-            position: absolute;
-            bottom: 50px;
-            width: 10px;
-            height: 10px;
+        /* 圖鑑視窗 (Modal) */
+        #catalog-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #catalog-box {
             background: white;
-            border-radius: 50%;
-            animation: splashEffect 0.4s ease-out forwards;
-            pointer-events: none;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 80%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .junk-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .junk-slot {
+            width: 60px;
+            height: 60px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            border: 2px solid #ddd;
+        }
+        .locked { color: #ccc; filter: brightness(0.2) grayscale(1); }
+        .close-btn {
+            background: #e74c3c; color: white; border: none;
+            padding: 10px 25px; border-radius: 10px; cursor: pointer;
         }
 
-        @keyframes splashEffect {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(4); opacity: 0; }
-        }
-
-        .tip { position: fixed; bottom: 20px; color: #7f8c8d; font-size: 0.85rem; text-align: center; padding: 0 20px; line-height: 1.4; }
+        .tip { position: fixed; bottom: 20px; color: #7f8c8d; font-size: 0.85rem; text-align: center; }
     </style>
 </head>
 <body>
@@ -129,8 +153,8 @@
         <div class="counter-num">💰 <span id="count">0</span></div>
         
         <div class="scores-container">
-            <div class="score-box">🏆 <span id="label-best-coin">Best Coins</span>: <span id="best-coin-count">0</span></div>
-            <div class="score-box">🗑️ <span id="label-best-junk">Best Junk</span>: <span id="best-junk-count">0</span></div>
+            <div class="score-box">🏆 <span id="label-best-coin">Best</span>: <span id="best-coin-count">0</span></div>
+            <div class="score-box" onclick="toggleCatalog()">🗑️ <span id="label-best-junk">Junk Collection</span>: <span id="best-junk-count">0</span></div>
         </div>
         
         <div class="chance"><span id="label-chance">Success Rate</span>: <span id="chance-val">0.000000</span>%</div>
@@ -146,40 +170,59 @@
         </div>
     </div>
 
-    <div class="tip" id="label-tip">Click fountain to drop money.<br>Warning: 1% chance of total garbage.</div>
+    <div id="catalog-overlay" onclick="toggleCatalog()">
+        <div id="catalog-box" onclick="event.stopPropagation()">
+            <h2 id="catalog-title">Trash Gallery</h2>
+            <div class="junk-grid" id="junk-grid"></div>
+            <button class="close-btn" onclick="toggleCatalog()" id="btn-close">Close</button>
+        </div>
+    </div>
+
+    <div class="tip" id="label-tip">Click fountain to drop money.<br>Click "Junk Collection" to see your trash.</div>
 
     <script>
         const i18n = {
             'zh-TW': {
                 title: "超沒用許願噴泉",
                 current: "本次投入",
-                bestCoin: "最高硬幣",
+                bestCoin: "最高紀錄",
                 bestJunk: "累積垃圾",
                 chance: "願望達成率",
-                tip: "點擊噴泉：錢進去，水噴出來。<br>注意：有 1% 的機率會噴出垃圾（垃圾會被記錄）。"
+                gallery: "垃圾圖鑑",
+                close: "關閉",
+                tip: "點擊噴泉投幣。點擊「累積垃圾」查看你的收藏。"
             },
             'en': {
                 title: "Useless Wishing Fountain",
                 current: "Current Drops",
                 bestCoin: "Best Coins",
-                bestJunk: "Total Junk",
+                bestJunk: "Junk Collection",
                 chance: "Success Rate",
-                tip: "Click fountain to drop money.<br>Warning: 1% chance of total garbage (recorded)."
+                gallery: "Trash Gallery",
+                close: "Close",
+                tip: "Click fountain to drop money. Click 'Junk Collection' to see your trash."
             }
         };
 
         const userLang = navigator.language || navigator.userLanguage;
         const lang = userLang.includes('zh') ? 'zh-TW' : 'en';
 
+        // 垃圾定義
+        const JUNKS = ['🐟', '👞', '🥫', '🦴', '💩', '🏚️', '🐀', '🍼'];
+        let unlockedJunks = JSON.parse(localStorage.getItem('unlockedJunks')) || [];
+
+        // 初始化介面
         document.title = i18n[lang].title;
         document.getElementById('label-coins').innerText = i18n[lang].current;
         document.getElementById('label-best-coin').innerText = i18n[lang].bestCoin;
         document.getElementById('label-best-junk').innerText = i18n[lang].bestJunk;
         document.getElementById('label-chance').innerText = i18n[lang].chance;
+        document.getElementById('catalog-title').innerText = i18n[lang].gallery;
+        document.getElementById('btn-close').innerText = i18n[lang].close;
         document.getElementById('label-tip').innerHTML = i18n[lang].tip;
 
         let coinCount = 0;
-        let junkCount = parseInt(localStorage.getItem('fountainJunkCount')) || 0;
+        let junkTotal = parseInt(localStorage.getItem('fountainJunkCount')) || 0;
         let bestCoin = parseInt(localStorage.getItem('fountainBestCoin')) || 0;
         
         const countEl = document.getElementById('count');
@@ -189,7 +232,7 @@
         const world = document.getElementById('fountain-world');
         
         bestCoinEl.innerText = bestCoin;
-        bestJunkEl.innerText = junkCount;
+        bestJunkEl.innerText = junkTotal;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -206,13 +249,38 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
+        function toggleCatalog() {
+            const overlay = document.getElementById('catalog-overlay');
+            if (overlay.style.display === 'flex') {
+                overlay.style.display = 'none';
+            } else {
+                renderCatalog();
+                overlay.style.display = 'flex';
+            }
+        }
+
+        function renderCatalog() {
+            const grid = document.getElementById('junk-grid');
+            grid.innerHTML = '';
+            JUNKS.forEach(j => {
+                const slot = document.createElement('div');
+                slot.className = 'junk-slot';
+                if (unlockedJunks.includes(j)) {
+                    slot.innerText = j;
+                } else {
+                    slot.innerText = '?';
+                    slot.classList.add('locked');
+                }
+                grid.appendChild(slot);
+            });
+        }
+
         function spawnItem(e) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
             coinCount++;
             countEl.innerText = coinCount;
             
-            // 更新最高硬幣紀錄
             if (coinCount > bestCoin) {
                 bestCoin = coinCount;
                 bestCoinEl.innerText = bestCoin;
@@ -227,13 +295,19 @@
             item.className = isJunk ? 'item junk' : 'item coin';
             
             if (isJunk) {
-                // 增加垃圾紀錄
-                junkCount++;
-                bestJunkEl.innerText = junkCount;
-                localStorage.setItem('fountainJunkCount', junkCount);
+                junkTotal++;
+                bestJunkEl.innerText = junkTotal;
+                localStorage.setItem('fountainJunkCount', junkTotal);
 
-                const junks = ['🐟', '👞', '🥫', '🦴', '💩', '🏚️', '🐀'];
-                item.innerText = junks[Math.floor(Math.random() * junks.length)];
+                const selectedJunk = JUNKS[Math.floor(Math.random() * JUNKS.length)];
+                item.innerText = selectedJunk;
+                
+                // 解鎖圖鑑
+                if (!unlockedJunks.includes(selectedJunk)) {
+                    unlockedJunks.push(selectedJunk);
+                    localStorage.setItem('unlockedJunks', JSON.stringify(unlockedJunks));
+                }
+
                 playSound(80, 'sawtooth', 0.5, 0.1); 
             } else {
                 item.innerText = '$';
